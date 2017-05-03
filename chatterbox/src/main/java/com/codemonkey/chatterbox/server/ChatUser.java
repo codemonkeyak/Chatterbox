@@ -6,18 +6,19 @@ import java.net.*;
 import java.util.*;
 
 import com.codemonkey.chatterbox.server.ChatServer;
+import com.codemonkey.chatterbox.common.ChatMessage;
 
 public class ChatUser implements Runnable {
 
-  PrintWriter out = null;
-  BufferedReader in = null;
+  ObjectOutputStream out = null;
+  ObjectInputStream in = null;
   Socket socket = null;
 
   public ChatUser(Socket socketVal) {
     socket = socketVal;
     try {
-      out = new PrintWriter(socket.getOutputStream());
-      in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      out = new ObjectOutputStream(socket.getOutputStream());
+      in = new ObjectInputStream((socket.getInputStream()));
     } catch (Exception e) {
       System.err.println("Error with input/out stream "+e);
     }
@@ -31,9 +32,9 @@ public class ChatUser implements Runnable {
   public void manageReadWriteToSocket() { 
     try {
       while(true) {
-        String socketInputData = in.readLine();
-        System.out.println("client said "+socketInputData);
-        if(socketInputData.equals("end")) {
+        ChatMessage socketInputData = (ChatMessage)in.readObject();
+        System.out.println("client said "+socketInputData.msg);
+        if(socketInputData.msg.equals("end")) {
           in.close();
           out.close();
           socket.close();
@@ -47,9 +48,13 @@ public class ChatUser implements Runnable {
   }
  
 
-  public void writeMsgToSocket(String msg) {
-    out.write(msg+"\n");
-    out.flush();
+  public void writeMsgToSocket(ChatMessage cm) {
+    try {
+      out.writeObject(cm);
+      out.flush();
+    } catch (Exception e) {
+      System.err.println("error with writing msg to socket "+e);
+    }
   }
 
 }
