@@ -6,6 +6,7 @@ import java.net.*;
 import java.util.*;
 
 import com.codemonkey.chatterbox.server.ChatServer;
+import com.codemonkey.chatterbox.server.AuthModule;
 import com.codemonkey.chatterbox.common.ChatMessage;
 
 public class ChatUser implements Runnable {
@@ -13,7 +14,9 @@ public class ChatUser implements Runnable {
   ObjectOutputStream out = null;
   ObjectInputStream in = null;
   Socket socket = null;
-
+	String username = null;
+	String password = null;
+  ChatMessage cm = null;
   public ChatUser(Socket socketVal) {
     socket = socketVal;
     try {
@@ -24,23 +27,38 @@ public class ChatUser implements Runnable {
     }
   }
 
+  public void authenticateClient() {
+    try {
+		  cm = (ChatMessage)in.readObject();
+		  if(cm.isSigninMessage()) {
+			  System.out.println("client sent username = "+cm.username+" password "+cm.password+" to the server");
+				AuthModule authModule = AuthModule.getInstance();
+				authModule.authenticate(cm.username,cm.password,out,in,socket);
+		    manageReadWriteToSocket();
+		  } else {
+        throw new Exception();
+		  }
+		} catch (Exception e) {
+       System.err.println("Error with authentication "+e);
+		}
+	}
 
   public void run() {
-    manageReadWriteToSocket();
+	  authenticateClient();
   }
 
   public void manageReadWriteToSocket() { 
     try {
       while(true) {
-        ChatMessage socketInputData = (ChatMessage)in.readObject();
-        System.out.println("client said "+socketInputData.msg);
-        if(socketInputData.msg.equals("end")) {
+        cm = (ChatMessage)in.readObject();
+        System.out.println(cm.username+" said "+cm.msg+" to server at "+cm.date.toLocaleString()+" ");
+        if(cm.msg.equals("end")) {
           in.close();
           out.close();
           socket.close();
           break;
         }
-        ChatServer.msgAllClients(socketInputData);
+        ChatServer.msgAllClients(cm);
       }
     } catch (Exception e) {
       System.err.println("Error with socket "+e);

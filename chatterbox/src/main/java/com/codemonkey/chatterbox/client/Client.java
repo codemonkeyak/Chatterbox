@@ -16,6 +16,10 @@ public class Client implements Runnable {
   Scanner scan = null;
   ObjectOutputStream out = null;
   ObjectInputStream in = null;
+	Scanner username = null;
+	Scanner password = null;
+	ChatMessage cm = null;
+	String name = null;
   public static void main(String args[]) {
   
     host = args[0];
@@ -29,7 +33,7 @@ public class Client implements Runnable {
       while(true) {
         try {
           ChatMessage clientOutput = (ChatMessage) client.in.readObject();
-          System.out.println("output to client from the socket "+clientOutput.msg);
+          System.out.println("output to client from the socket "+clientOutput.username+" said "+clientOutput.msg+" at "+clientOutput.date+" time ");
         } catch(IOException e) {
           System.err.println("error with reading from socket "+e);
           break;
@@ -44,15 +48,37 @@ public class Client implements Runnable {
     manageClient();
   }
 
+	public ChatMessage sendCredentials() {
+	  username = new Scanner(System.in);
+		password = new Scanner(System.in);
+		String name = username.nextLine();
+		String pass = password.nextLine();
+    cm = new ChatMessage();
+		cm.buildAuthenticationMessage(name,pass);
+		return cm;
+	}
+
+	public ChatMessage sendMsg() {
+	   String user = name; 
+     Scanner userMsg = new Scanner(System.in);
+		 String msg = userMsg.nextLine();
+     Date date = new Date();
+		 cm = new ChatMessage();
+		 cm.buildRegularMessage(msg,date,user);
+		 return cm;
+	}
+
   public void manageClient() {
     try {
       scan = new Scanner(System.in);
       out = new ObjectOutputStream(socket.getOutputStream());
       String userString = "";
+			cm = sendCredentials();
+			name = cm.username;
+			out.writeObject(cm);
+			out.flush();
       while(true) {
-        ChatMessage cm = new ChatMessage();
-        userString = scan.nextLine();
-        cm.msg = userString;
+        cm = sendMsg();
         out.writeObject(cm);
         out.flush();
         if(userString.equals("end")) {
